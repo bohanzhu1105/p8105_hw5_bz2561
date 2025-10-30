@@ -1,0 +1,21 @@
+---
+title: "Iteration HW"
+author: "Bohan Zhu"
+date: "2025-10-30"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+```
+
+## Problem 1
+
+
+
+## Problem 2
+
+
+
+## Problem 3
+
