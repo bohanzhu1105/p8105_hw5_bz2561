@@ -35,16 +35,7 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ## Problem 1: Same Birthday
 
-Inner part
-
-```{r, eval=FALSE}
-birthdays = sample(1:365, 5, replace = TRUE)
-
-repeated_bday = length(unique(birthdays)) < 5 # if repeat, TRUE. No repeat,FALSE.
-repeated_bday
-```
-
-Put this into a function
+Write the function
 
 ```{r}
 bday_sim = function(n_room){
@@ -58,9 +49,7 @@ bday_sim = function(n_room){
 }
 ```
 
-```{r, eval=FALSE}
-bday_sim(20)
-```
+Do the simulation
 
 ```{r}
 bday_sim_results = 
@@ -80,6 +69,7 @@ bday_sim_results =
 ```
 
 plot this
+
 ```{r}
 bday_sim_results |> 
   ggplot(aes(x = bdays, y = prob_repeat)) +
@@ -87,12 +77,75 @@ bday_sim_results |>
   geom_line()
 ```
 
+## Problem 2 : Power in one sample t-test
 
+Write the function
+```{r}
+t_test = function(mu){
+  
+  x = rnorm(30, mean = mu, sd = 5)
+  broom::tidy(t.test(x, mu = 0, alternative = "two.sided")) |> 
+    rename(mu_hat = estimate) |> 
+    select(mu_hat, p.value)
+  
+}
+```
 
+Do the simulation
 
-## Problem 2
+```{r}
+t_test_results = 
+  expand_grid(
+    mu = 0:6,
+    iter = 1:50
+  ) |> 
+  mutate(
+    result = map(mu, t_test)
+  ) |> 
+  group_by(
+    mu
+  ) |> 
+  unnest(result)
+```
 
+### mu vs. power
+
+```{r}
+mu_power = 
+  t_test_results |> 
+  summarize(power = mean(p.value < 0.05))
+
+mu_power |> 
+  ggplot(aes(x = mu, y = power, color = mu)) +
+  geom_point() +
+  labs(
+    x = "True mean mu",
+    y = "Power (P(reject null))",
+    title = "Relationship between Power and mu",
+    caption = "Simulation results based on n = 30, sigma = 5, alpha = 0.05 "
+  ) +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+    )
+```
 
 
 ## Problem 3
 
+```{r}
+homicides_df = 
+  read_csv("data/homicide-data.csv")
+```
+
+Inner part
+```{r, eval=FALSE}
+birthdays = sample(1:365, 5, replace = TRUE)
+
+repeated_bday = length(unique(birthdays)) < 5 # if repeat, TRUE. No repeat,FALSE.
+repeated_bday
+```
+
+```{r, eval=FALSE}
+bday_sim(20)
+```
