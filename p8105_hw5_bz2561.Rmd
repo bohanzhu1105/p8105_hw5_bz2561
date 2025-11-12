@@ -97,18 +97,16 @@ Do the simulation
 t_test_results = 
   expand_grid(
     mu = 0:6,
-    iter = 1:50
+    iter = 1:5000
   ) |> 
   mutate(
     result = map(mu, t_test)
   ) |> 
-  group_by(
-    mu
-  ) |> 
+  group_by(mu) |> 
   unnest(result)
 ```
 
-### mu vs. power
+### plot 1: mu vs. power
 
 ```{r}
 mu_power = 
@@ -118,12 +116,53 @@ mu_power =
 mu_power |> 
   ggplot(aes(x = mu, y = power, color = mu)) +
   geom_point() +
+  geom_line() +
   labs(
     x = "True mean mu",
     y = "Power (P(reject null))",
     title = "Relationship between Power and mu",
-    caption = "Simulation results based on n = 30, sigma = 5, alpha = 0.05 "
+    caption = "Simulation results based on n = 30, sigma = 5, alpha = 0.05"
   ) +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+    )
+```
+
+### plot 2: mu vs. mu_hat
+
+```{r}
+mu_summary_all <-
+  t_test_results |>
+  group_by(mu) |> 
+  summarize(avg_mu_hat = mean(mu_hat))
+
+mu_summary_sig <-
+  t_test_results |>
+  group_by(mu) |> 
+  filter(p.value < 0.05) |>
+  summarize(
+    avg_mu_hat_sig = mean(mu_hat)
+    )
+
+mu_summary <-
+  left_join(mu_summary_all, mu_summary_sig, by = "mu")
+```
+
+```{r}
+mu_summary |> 
+  ggplot(aes(x = mu)) +
+  geom_point(aes(y = avg_mu_hat, color = "all mu included"), alpha = 0.5) +
+  geom_line(aes(y = avg_mu_hat, color = "all mu included"), alpha = 0.5) +
+  geom_point(aes(y = avg_mu_hat_sig, color = "significant mu only"), alpha = 0.5) +
+  geom_line(aes(y = avg_mu_hat_sig, color = "significant mu only"), alpha = 0.5) +
+  labs(
+    title = "Relationship between mu and mu_hat", 
+    x = "True mean mu", 
+    y = "Estimated mean mu_hat",
+    caption = "Simulation results based on n = 30, sigma = 5, alpha = 0.05",
+    color = ""
+    ) +
   theme(
     legend.position = "right",
     plot.title = element_text(hjust = 0.5)
