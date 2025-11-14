@@ -33,6 +33,10 @@ scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
 
+```{r}
+set.seed(123)
+```
+
 ## Problem 1: Same Birthday
 
 Write the function
@@ -91,7 +95,25 @@ t_test = function(mu){
 }
 ```
 
-Do the simulation
+Test for $\mu = 0$ only. 
+
+```{r}
+t_test_results = 
+  expand_grid(
+    mu = 0,
+    iter = 1:5000
+  ) |> 
+  mutate(
+    result = map(mu, t_test)
+  ) |> 
+  group_by(mu) |> 
+  unnest(result)
+
+t_test_results
+```
+
+
+Do the simulation for all $\mu$
 
 ```{r}
 t_test_results = 
@@ -117,6 +139,7 @@ mu_power |>
   ggplot(aes(x = mu, y = power, color = mu)) +
   geom_point() +
   geom_line() +
+  scale_x_continuous(breaks = 1:6) +
   labs(
     x = "True mean mu",
     y = "Power (P(reject null))",
@@ -152,10 +175,11 @@ mu_summary <-
 ```{r}
 mu_summary |> 
   ggplot(aes(x = mu)) +
-  geom_point(aes(y = avg_mu_hat, color = "all mu included"), alpha = 0.5) +
-  geom_line(aes(y = avg_mu_hat, color = "all mu included"), alpha = 0.5) +
-  geom_point(aes(y = avg_mu_hat_sig, color = "significant mu only"), alpha = 0.5) +
-  geom_line(aes(y = avg_mu_hat_sig, color = "significant mu only"), alpha = 0.5) +
+  geom_point(aes(y = avg_mu_hat, color = "all mu included")) +
+  geom_line(aes(y = avg_mu_hat, color = "all mu included")) +
+  geom_point(aes(y = avg_mu_hat_sig, color = "significant mu only")) +
+  geom_line(aes(y = avg_mu_hat_sig, color = "significant mu only")) +
+  scale_x_continuous(breaks = 1:6) +
   labs(
     title = "Relationship between mu and mu_hat", 
     x = "True mean mu", 
@@ -170,21 +194,80 @@ mu_summary |>
 ```
 
 
-## Problem 3
+## Problem 3 Homicides
 
 ```{r}
 homicides_df = 
-  read_csv("data/homicide-data.csv")
+  read_csv("data/homicide-data.csv", na = c("NA",".","")) |> 
+  janitor::clean_names() 
 ```
 
-Inner part
-```{r, eval=FALSE}
-birthdays = sample(1:365, 5, replace = TRUE)
-
-repeated_bday = length(unique(birthdays)) < 5 # if repeat, TRUE. No repeat,FALSE.
-repeated_bday
+```{r}
+homicides_df =
+  homicides_df |>
+  mutate(
+    city_state = str_c(city, ", ", state),
+    unsolved_homicides = disposition %in% c("Closed without arrest", "Open/No arrest")
+  ) |>
+  group_by(city_state) |>
+  summarize(
+    total_homicides = n(),
+    unsolved_homicides = sum(unsolved_homicides)
+  ) |>
+  ungroup()
 ```
 
-```{r, eval=FALSE}
-bday_sim(20)
+`prop.test` for `Baltimore, MD` only
+
+```{r}
+city_prop_test = function(city_state_name) {
+
+  city_chosen =
+    homicides_df |>
+    filter(city_state == city_state_name)
+
+  prop_test =
+    prop.test(
+      x = city_chosen |> pull(unsolved_homicides),
+      n = city_chosen |> pull(total_homicides)
+    )
+
+  
+  broom::tidy(prop_test) |>
+    select(estimate, conf.low, conf.high) |>
+    mutate(city_state = city_state_name) |>
+    select(city_state, everything())
+}
+
+
+city_prop_test("Baltimore, MD")
 ```
+
+`prop.test` for all cities
+
+```{r}
+city_results =
+  homicides_df |>
+  mutate(
+    prop_test = map2(unsolved_homicides, total_homicides, \(x, y) prop.test(x, y)),
+    prop_tidy = map(prop_test, broom::tidy)
+  ) |>
+  unnest(prop_tidy) |>
+  select(city_state, estimate, conf.low, conf.high, total_homicides)
+
+prop_test_all =
+  map_df(homicides_df$city_state, city_prop_test)
+
+prop_test_all 
+```
+
+```{r}
+prop_test_all|> 
+  mutate(city_state = reorder(city_state, estimate)) |> 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+    geom_point()+
+  theme(axis.text.x = element_text(size = 5,angle = 30))+
+  ggtitle("Proportion of unsolved homicides in different cities")
+```
+
