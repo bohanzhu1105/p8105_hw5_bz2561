@@ -213,14 +213,25 @@ As $\mu$ increases and power approaches 1, almost all samples reject the null, s
 ## Problem 3 Homicides
 
 ```{r}
-homicides_df = 
+homicides = 
   read_csv("data/homicide-data.csv", na = c("NA",".","")) |> 
   janitor::clean_names() 
 ```
+ 
+The datasets `homicide_data` summaries  on homicides in 50 large U.S. cities. 
+There are `r ncol(homicides)` variables and `r nrow(homicides)`cases.
+Variables are `r colnames(homicides)`.
+
+Important variables include `uid`, a unique identifier for each case.`victim_age`
+which is useful for studying age-related patterns. `state` and `city` aims to supports 
+regional comparisons and is key for city-level trand and clearance analysis. 
+And `disposition` which indicates whether the homicide was solved or remains unsolved.
+
+There is one error case where city `Tulsa` was miss-categorized to state `AL`.
 
 ```{r}
 homicides_df =
-  homicides_df |>
+  homicides |>
   mutate(
     city_state = str_c(city, ", ", state),
     unsolved_homicides = disposition %in% c("Closed without arrest", "Open/No arrest")
@@ -279,7 +290,9 @@ prop_test_all
 
 ```{r}
 prop_test_all|> 
-  mutate(city_state = reorder(city_state, estimate)) |> 
+  mutate(
+    city_state = reorder(city_state, estimate)
+    ) |> 
   ggplot(aes(x = city_state, y = estimate)) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
     geom_point()+
@@ -287,3 +300,6 @@ prop_test_all|>
   ggtitle("Proportion of unsolved homicides in different cities")
 ```
 
+The point labeled `Tulsa, AL` is a data error — `Tulsa` is in Oklahoma, so this entry should be excluded from interpretation.
+
+Excluding that mistake, the plot shows clear differences in the proportion of unsolved homicides across cities. Most cities fall between roughly 30% and 55%, with a gradual increase from left to right. A few cities stand out with substantially higher unresolved rates above 60–70%, indicating consistently higher proportions of cases without arrest. The confidence intervals are fairly narrow, suggesting reasonably stable estimates for most cities.
